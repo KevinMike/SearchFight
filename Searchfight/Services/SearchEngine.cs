@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Searchfight.Common;
 using Searchfight.Infraestructure;
 using Searchfight.Models;
@@ -10,14 +11,15 @@ namespace Searchfight.Services
 {
     public class SearchService : ISearchService
     {
-        private List<SearchEngineConfiguration> _searchEngines { get; set; }
         private readonly IApiClientFactory _apiClientFactory;
-        private List<string> _requestFailed { get;  }
-        public SearchService(IApiClientFactory apiClientFactory, IConfiguration configuration)
+        private readonly ILogger _logger;
+        private List<SearchEngineConfiguration> _searchEngines { get; set; }
+
+        public SearchService(IApiClientFactory apiClientFactory, IConfiguration configuration, ILogger<SearchService> logger)
         {
-            _requestFailed = new List<string>();
             _searchEngines = new List<SearchEngineConfiguration>();
             _apiClientFactory = apiClientFactory;
+            _logger = logger;
 
             var section = configuration.GetSection("SearchEngines");
             section.Bind(_searchEngines);
@@ -31,8 +33,6 @@ namespace Searchfight.Services
             var winner = string.Empty;
             var requests = new List<Task<SearchEngineResponse>>();
 
-            _requestFailed.Clear();
-
             foreach (var query in queries)
             {
                 foreach (var searchEngine in _searchEngines)
@@ -43,7 +43,6 @@ namespace Searchfight.Services
             }
 
             var responses = await Utils.ResolveTasksList(requests);
-
 
             foreach (var response in responses)
             {
@@ -90,8 +89,7 @@ namespace Searchfight.Services
                 }
             }
 
-
-            return new SearchServiceResponse(winner, winnerPerSearchEngine, detailNumberOfResultsPerQuery, _requestFailed) ;
+            return new SearchServiceResponse(winner, winnerPerSearchEngine, detailNumberOfResultsPerQuery) ;
         }
 
         private async Task<SearchEngineResponse> GetNumberOfResults(string query, ApiClient searchEngineClient, string resultPath)
@@ -108,12 +106,13 @@ namespace Searchfight.Services
                 }
                 else
                 {
+                    _logger.Log(LogLevel.Warning, $"Could not get results for {query} in {searchEngineClient.EngineName}");
                     return new SearchEngineResponse(searchEngineClient.EngineName, query, 0);
                 }
             }
             catch (Exception ex)
             {
-                _requestFailed.Add($"The request of {query} to {searchEngineClient.EngineName} faild due to {ex.Message}");
+                _logger.Log(LogLevel.Error, $"The {searchEngineClient.EngineName} request of {query} faild due to: {ex.Message}");
                 return new SearchEngineResponse(searchEngineClient.EngineName, query, 0);
             }
             

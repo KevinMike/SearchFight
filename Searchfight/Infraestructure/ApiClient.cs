@@ -16,11 +16,11 @@ namespace Searchfight.Infraestructure
 
         public ApiClient(string engineName, string baseUrl, string searchParam, Dictionary<string, string> headers, Dictionary<string, string> queryParams)
         {
-            EngineName = engineName;
             _baseUrl = baseUrl;
             _searchParam = searchParam;
             _headers = headers;
             _queryParams = queryParams;
+            EngineName = engineName;
         }
 
         public async Task<string> SearchInEngine(string query)
@@ -60,7 +60,6 @@ namespace Searchfight.Infraestructure
                 {
                     return null;
                 }
-
             }
         }
     }

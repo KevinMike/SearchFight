@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Searchfight.Infraestructure;
 using Searchfight.Services;
 
@@ -12,7 +13,6 @@ namespace Searchfight
     {
         private static IConfiguration GetConfiguration()
         {
-
             IConfiguration Configuration = new ConfigurationBuilder()
               .SetBasePath(Directory.GetCurrentDirectory())
               .AddJsonFile("appsettings.json", false)
@@ -26,6 +26,10 @@ namespace Searchfight
                 .AddTransient<ISearchService, SearchService>()
                 .AddTransient<IApiClientFactory, ApiClientFactory>()
                 .AddTransient((IServiceProvider arg) => GetConfiguration());
+
+            services.AddLogging(configure => configure.AddConsole())
+                .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Information)
+                .AddTransient<SearchService>();
 
             return services.BuildServiceProvider();
         }
@@ -44,11 +48,6 @@ namespace Searchfight
             var appService = serviceProvider.GetService<ISearchService>();
             var result = appService.Search(queries).Result;
 
-            foreach(var failed in result.RequestFailed)
-            {
-                Console.WriteLine($"* {failed}");
-            }
-
             foreach (KeyValuePair<string, Dictionary<string,long>> entry in result.ResultsPerQuery)
             {
                 Console.WriteLine($"Results for {entry.Key}");
@@ -57,10 +56,12 @@ namespace Searchfight
                     Console.WriteLine($"     => {engineDetail.Key} found {engineDetail.Value} results");
                 }
             }
+
             foreach (KeyValuePair<string, string> entry in result.WinnerPerSearchEngine)
             {
                 Console.WriteLine($"{entry.Key} winner is {entry.Value}");
             }
+
             Console.WriteLine($"The final winner is {result.Winner}");
         }
     }
