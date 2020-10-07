@@ -1,50 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Searchfight.Infraestructure;
 using Searchfight.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Searchfight
 {
     class Program
     {
-        private static IConfiguration GetConfiguration()
-        {
-            IConfiguration Configuration = new ConfigurationBuilder()
-              .SetBasePath(Directory.GetCurrentDirectory())
-              .AddJsonFile("appsettings.json", false)
-              .Build();
-            return Configuration;
-        }
-
-        private static IServiceProvider ConfigureDependencies()
-        {
-            var services = new ServiceCollection()
-                .AddTransient<ISearchService, SearchService>()
-                .AddTransient<IApiClientFactory, ApiClientFactory>()
-                .AddTransient((IServiceProvider arg) => GetConfiguration());
-
-            services.AddLogging(configure => configure.AddConsole())
-                .Configure<LoggerFilterOptions>(options => options.MinLevel = LogLevel.Information)
-                .AddTransient<SearchService>();
-
-            return services.BuildServiceProvider();
-        }
-
         static void Main(string[] args)
         {
             var queries = new List<string>(args);
 
-            if(queries.Count == 0)
+            if(queries.Count < 2)
             {
                 Console.WriteLine($"You must provide at least 2 search words as anguments");
                 return;
             }
 
-            var serviceProvider = ConfigureDependencies();
+            Console.WriteLine("Searching...");
+
+            IServiceProvider serviceProvider = DependenciesContainer.ConfigureDependencies();
             var appService = serviceProvider.GetService<ISearchService>();
             var result = appService.Search(queries).Result;
 
